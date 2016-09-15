@@ -2,6 +2,8 @@
 #include "si4x6x.h"
 #include "radio_config_Si4463.h"
 
+#include <string.h>
+
 #define PIN_NUMBER(x, y)      ((x << 16) | (y))
 
 #define PA_4                  PIN_NUMBER(0, 4)
@@ -63,6 +65,9 @@ void loop()
     }
   }
   //tx.powerUpTCXO();
+  
+  uint8_t HiMsg[]="hello\r\n";
+  CDC_Transmit_FS(HiMsg, strlen((const char *)HiMsg));
 }
 
 
