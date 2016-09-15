@@ -1,0 +1,12 @@
+*.o
+*.a
+*.bin
+*.out
+*.map
+*.list
+.project
+.mxproject
+.depend
+.settings/
+*.ioc
+
