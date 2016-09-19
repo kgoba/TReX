@@ -48,18 +48,6 @@
   * @{
   */ 
 /* USER CODE BEGIN PRIVATE_TYPES */
-
-/* The following structures groups all needed parameters to be configured for the 
-   ComPort. These parameters can modified on the fly by the host through CDC class
-   command class requests. */
-typedef struct
-{
-  uint32_t bitrate;
-  uint8_t  format;
-  uint8_t  paritytype;
-  uint8_t  datatype;
-}LINE_CODING;
-
 /* USER CODE END PRIVATE_TYPES */ 
 /**
   * @}
@@ -71,8 +59,10 @@ typedef struct
 /* USER CODE BEGIN PRIVATE_DEFINES */
 /* Define size for the receive and transmit buffer over CDC */
 /* It's up to user to redefine and/or remove those define */
+//#define APP_RX_DATA_SIZE  CDC_DATA_FS_OUT_PACKET_SIZE
 #define APP_RX_DATA_SIZE  4
 #define APP_TX_DATA_SIZE  4
+#define RX_FIFO_SIZE      8
 /* USER CODE END PRIVATE_DEFINES */
 /**
   * @}
@@ -101,8 +91,12 @@ uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
 
+uint8_t rxFIFO[RX_FIFO_SIZE];
+uint8_t rxFIFOHead;
+uint8_t rxFIFOCount;
+
 //mch settings for usb vcp
-static LINE_CODING linecoding =
+static USBD_CDC_LineCodingTypeDef linecoding =
   {
     9600, /* baud rate*/
     0x00,   /* stop bits-1*/
@@ -163,6 +157,9 @@ static int8_t CDC_Init_FS(void)
   /* Set Application Buffers */
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, UserRxBufferFS);
+  USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+  rxFIFOHead = 0;
+  rxFIFOCount = 0;
   return (USBD_OK);
   /* USER CODE END 3 */ 
 }
@@ -281,8 +278,32 @@ static int8_t CDC_Control_FS  (uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS (uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
-  USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
+  
+  HAL_GPIO_TogglePin(GPIOF, GPIO_PIN_1);
+  //USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+  
+  //USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
+  //USBD_CDC_TransmitPacket(&hUsbDeviceFS);
+  
+    /*
+  uint8_t tail = rxFIFOHead + rxFIFOCount;
+
+  uint32_t length = *Len;
+
+  while (length > 0) {
+    if (rxFIFOCount >= RX_FIFO_SIZE) break;
+
+    if (tail >= RX_FIFO_SIZE) tail -= RX_FIFO_SIZE;
+    rxFIFO[tail] = *Buf;
+    rxFIFOCount++;
+    tail++;
+    
+    length--;
+    Buf++;
+  }
+  */
+  
   return (USBD_OK);
   /* USER CODE END 6 */ 
 }
@@ -302,8 +323,7 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 {
   uint8_t result = USBD_OK;
   /* USER CODE BEGIN 7 */ 
-  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
-  if (hcdc->TxState != 0){
+  if (CDC_GetTXState() != 0){
     return USBD_BUSY;
   }
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, Buf, Len);
@@ -314,6 +334,36 @@ uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+
+uint8_t CDC_GetTXState() {
+  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+  return hcdc->TxState;
+}
+
+uint8_t CDC_GetRXState() {
+  USBD_CDC_HandleTypeDef *hcdc = (USBD_CDC_HandleTypeDef*)hUsbDeviceFS.pClassData;
+  return hcdc->RxState;
+}
+
+uint8_t CDC_GetRXAvailable() {
+  return rxFIFOCount;
+}
+
+uint8_t CDC_ReadByte() {
+  if (rxFIFOCount == 0) {
+    return 0;
+  }
+
+  uint8_t result = rxFIFO[rxFIFOHead];
+  
+  uint8_t newHead = rxFIFOHead + 1;
+  if (newHead >= RX_FIFO_SIZE) newHead = 0;
+  
+  rxFIFOHead = newHead;
+  rxFIFOCount--;
+  return result;
+}
+
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 
 /**

@@ -99,6 +99,10 @@ extern USBD_CDC_ItfTypeDef  USBD_Interface_fops_FS;
 uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 /* USER CODE BEGIN EXPORTED_FUNCTIONS */
+uint8_t CDC_GetRXAvailable();
+uint8_t CDC_ReadByte();
+uint8_t CDC_GetTXState();
+uint8_t CDC_GetRXState();
 /* USER CODE END EXPORTED_FUNCTIONS */
 /**
   * @}

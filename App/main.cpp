@@ -25,6 +25,36 @@ uint32_t xtalFrequency = 26000000UL;
 Si446x tx(PA_4, xtalFrequency);
 
 
+class USBSerial {
+public:
+  bool _putc(char c) {
+    while (isTXBusy()) {
+      // Wait and do nothing
+    }
+    txBuf = c;
+    uint8_t result = CDC_Transmit_FS(&txBuf, 1);
+    return true;
+  }
+
+  bool _getc(char &c) {
+    if (CDC_GetRXAvailable() == 0) return false;
+    c = CDC_ReadByte();
+    return true;
+  }
+  
+  uint8_t available() {
+    return CDC_GetRXAvailable();
+  }
+  
+private:
+  bool isTXBusy() {
+    return CDC_GetTXState() != 0;
+  }
+
+  uint8_t txBuf;
+  uint8_t rxBuf;
+};
+
 bool initModemAlt()
 {  
   for (uint8_t nTry = 3; nTry > 0; nTry--) {
@@ -48,7 +78,7 @@ void setup()
   HAL_Delay(100);
 }
 
-
+USBSerial dbg;
 
 void loop()
 {
@@ -66,8 +96,14 @@ void loop()
   }
   //tx.powerUpTCXO();
   
-  uint8_t HiMsg[]="hello\r\n";
-  CDC_Transmit_FS(HiMsg, strlen((const char *)HiMsg));
+  //uint8_t HiMsg[]="hello\r\n";
+  //CDC_Transmit_FS(HiMsg, strlen((const char *)HiMsg));
+  
+  //char c;
+  //if (dbg._getc(c)) {
+  //  dbg._putc(c);
+  //}
+  //dbg._putc('X');
 }
 
 
