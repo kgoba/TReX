@@ -49,12 +49,15 @@
 // Description:              Command to power-up the device and select the operational mode and functionality.
 */
 #define RF_POWER_UP 0x02, 0x81, 0x01, 0x01, 0x8C, 0xBA, 0x80
+#define RF_POWER_UP_XO 0x02, 0x81, 0x00, 0x01, 0x8C, 0xBA, 0x80
+//#define RF_POWER_UP_NO_PATCH 0x02, 0x01, 0x01, 0x01, 0x8C, 0xBA, 0x80
 
 /*
 // Command:                  RF_GPIO_PIN_CFG
 // Description:              Configures the GPIO pins.
 */
-#define RF_GPIO_PIN_CFG 0x13, 0x03, 0x03, 0x00, 0x08, 0x00, 0x00, 0x00
+//#define RF_GPIO_PIN_CFG 0x13, 0x01, 0x01, 0x01, 0x01, 0x40, 0x40, 0x00
+#define RF_GPIO_PIN_CFG 0x13, 0x01, 0x01, 0x01, 0x08, 0x00, 0x00, 0x00
 
 /*
 // Set properties:           RF_GLOBAL_XO_TUNE_1
@@ -956,7 +959,18 @@
 // --------------------------------------------
 
 
+
 #ifndef FIRMWARE_LOAD_COMPILE
+
+#define RADIO_CONFIGURATION_DATA_ARRAY2 { \
+        SI446X_PATCH_CMDS, \
+        0x07, RF_POWER_UP, \
+        0x08, RF_GPIO_PIN_CFG, \
+        0x05, RF_GLOBAL_XO_TUNE_1, \
+        0x05, RF_GLOBAL_CONFIG_1, \
+        0x00 \
+}
+
 #define RADIO_CONFIGURATION_DATA_ARRAY { \
         SI446X_PATCH_CMDS, \
         0x07, RF_POWER_UP, \

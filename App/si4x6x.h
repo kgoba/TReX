@@ -150,7 +150,7 @@ public:
   
   void setPowerLevel(uint8_t level);
   void setPAConfig(uint8_t mode, uint8_t level, uint8_t duty, uint8_t tc);
-  void configureGPIO(uint8_t gpio0, uint8_t gpio1, uint8_t gpio2, uint8_t gpio3, uint8_t nirq, uint8_t sdo, uint8_t genConfig);
+  void configureGPIO(uint8_t gpio0 = 0, uint8_t gpio1 = 0, uint8_t gpio2 = 0, uint8_t gpio3 = 0, uint8_t nirq = 0, uint8_t sdo = 0, uint8_t genConfig = 3);
 
   void enableTX();
   void disableRadio();
@@ -200,6 +200,8 @@ public:
 
   void changeState(State state);
   
+  bool isError();
+  
 private: 
   bool waitForCTS(uint16_t timeout = 200);
   bool waitForReply(uint8_t *reply, uint8_t replyLength, uint16_t timeout = 200);
@@ -215,6 +217,8 @@ private:
   
   uint32_t    _xtalFrequency;
   uint8_t     _outDiv;
+  
+  bool        _isError;
 
   //bool        _ctsHigh;
 
