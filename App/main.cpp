@@ -6,6 +6,13 @@
 
 #include <string.h>
 
+
+const bool isMaster = true;
+
+const int kPacketLength = 7;
+const int kPacketsInBurst = 10;
+
+
 #define PIN_NUMBER(x, y)      ((x << 16) | (y))
 
 #define PA_4                  PIN_NUMBER(0, 4)
@@ -41,7 +48,7 @@ void setRedLED(bool on) {
 }
 
 
-bool resetTX() {
+void resetTX() {
   // Reset Si446X
   HAL_GPIO_WritePin(TRX_SDN_GPIO_Port, TRX_SDN_Pin, GPIO_PIN_SET);
   HAL_Delay(100);
@@ -71,41 +78,42 @@ void setup()
   dbg.print("---= RESET =---\n");
 }
 
-const int kPacketLength = 7;
-const int kPacketsInBurst = 8;
 
-
-void checkReceived() {
-  dbg.print("Listening...\n");
-  tx.startRX(0, 0, Si446x::kStateNoChange, Si446x::kStateRX, Si446x::kStateRX);
-  
-  uint8_t rxBuf[kPacketLength];
-  
-  uint16_t nTry = 100;
-  while (nTry > 0) {
+bool checkReceived(uint8_t *rxBuf, uint32_t timeout = 1) {
+  tx.startRX(0, kPacketLength, Si446x::kStateNoChange, Si446x::kStateRX, Si446x::kStateRX);
+    
+  //uint16_t nTry = 100;
+  while (true) {
     Si446x::IRQStatus irqStatus;
     tx.getIntStatus(irqStatus);
 
     if (irqStatus.isPacketRXPending()) {   
-      dbg.print("Received data\n");
-      setGreenLED(true);
+      //dbg.print("Received data\n");
       uint8_t pktLen = tx.getAvailableRX();
-      while (pktLen >= kPacketLength) {
-        dbg.print("  Received packet\n");
+      if (pktLen >= kPacketLength) {
+        dbg.print("  Received ");
+        dbg.print(pktLen); 
+        dbg.print(" bytes, packet: ");
         tx.readRX(rxBuf, kPacketLength);
+        for (uint8_t idx = 0; idx < kPacketLength; idx++) {
+          dbg.print(rxBuf[idx]);
+          dbg.print(" ");
+        }
+        dbg.print("\n");
         pktLen -= kPacketLength;
       }
+      return true;
     }
     
-    nTry--;
-    delay(20);
+    if (timeout == 0) break;
+    delay(100);
+    timeout--;
   }
+  return false;
 }
 
-void transmit() {
+void transmit(uint8_t *data) {
   dbg.print("Transmitting packet burst...");
-
-  uint8_t data[kPacketLength] = { 0x06, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06 };
 
   for (uint8_t idx = 0; idx < kPacketsInBurst; idx++) 
   {
@@ -123,9 +131,10 @@ void transmit() {
       delay(10);
       nTry--;
     }
+    delay(100);
   }
 
-  delay(200);
+  //delay(200);
   dbg.print("done\n");
 }  
 
@@ -138,7 +147,7 @@ void loop()
     setLED(true);
     if (initRadio()) {
       tx.getIntStatus();    // clear all interrupts
-      tx.setXOTune(55);
+      tx.setXOTune(56);
       
       Si446x::PartInfo info;
       tx.getPartInfo(info);
@@ -156,7 +165,6 @@ void loop()
       
       if (initialized) {
         setLED(false);
-        //tx.startRX(0, 0, Si446x::kStateNoChange, Si446x::kStateRX, Si446x::kStateRX);
       }
     }
     else {
@@ -165,12 +173,64 @@ void loop()
     }
   }
   else {         
-    setGreenLED(false);
-    checkReceived();
+    uint8_t packet[kPacketLength];
+    if (isMaster) {
+      for (uint8_t idx = 0; idx < kPacketLength; idx++) {
+        packet[idx] = idx;
+      }
+      // Send 10 packets
+      setRedLED(true);
+      transmit(packet);    
+      setRedLED(false);
 
-    setRedLED(true);
-    transmit();    
-    setRedLED(false);
+      dbg.print("Listening...\n");
+      uint8_t nReceived = 0;
+      if (checkReceived(packet, 10)) {
+        nReceived++;
+        setGreenLED(true);
+        // Receive until no more packets in 500 ms
+        while (checkReceived(packet, 5)) {
+          nReceived++;
+        }
+        setGreenLED(false);
+        
+        // Parse reply data
+        uint8_t nTransmitted = 0;
+        if ((packet[0] == packet[1]) && (packet[0] == packet[2])) {
+          nTransmitted = packet[0];
+        }
+        dbg.print("Replies: "); dbg.print(nReceived); dbg.print(", received: "); dbg.print(nTransmitted);
+        dbg.print("\n");
+      }
+
+      delay(2000);
+      //setGreenLED(false);
+      //checkReceived();
+    }
+    else {
+      // Check if packet can be received in 5 seconds
+      dbg.print("Listening...\n");
+      uint8_t nReceived = 0;
+      if (checkReceived(packet, 50)) {
+        nReceived++;
+        setGreenLED(true);
+        // Receive until no more packets in 500 ms
+        while (checkReceived(packet, 5)) {
+          nReceived++;
+        }
+        setGreenLED(false);
+
+        packet[0] = nReceived;
+        packet[1] = nReceived;
+        packet[2] = nReceived;
+        // Transmit reply
+        setRedLED(true);
+        transmit(packet);
+        setRedLED(false);
+
+        delay(1000);
+      }
+    }
   }
 }
 

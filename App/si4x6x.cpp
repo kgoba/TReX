@@ -71,7 +71,7 @@ enum {
   RF_FREQ_CONTROL_INTE  = 0x4000
 };
 
-static NoDebug dbg;
+static Debug dbg;
 
 Si446x::Si446x(int pinCS, uint32_t xtalFrequency) 
   : SPIDevice(pinCS), _xtalFrequency(xtalFrequency), _outDiv(4)
@@ -107,14 +107,14 @@ bool Si446x::waitForReply(uint8_t *reply, uint8_t replyLength, uint16_t timeout)
     cts = SPIDevice::read();
     if (cts == 0xFF) 
     {
-      dbg.print("< ");  
+      //dbg.print("< ");  
       for (; replyLength > 0; replyLength--) 
       {
         uint8_t x = SPIDevice::read(); 
         *reply++ = x;
-        dbg.print(x); dbg.print(" ");
+        //dbg.print(x); dbg.print(" ");
       }
-      dbg.print("\n");
+      //dbg.print("\n");
       SPIDevice::release();
       break;
     }
@@ -127,7 +127,7 @@ bool Si446x::waitForReply(uint8_t *reply, uint8_t replyLength, uint16_t timeout)
   if (timeout == 0) 
   {
     // TODO: possibly indicate error
-    dbg.print("CTS TIMEOUT\n");
+    //dbg.print("CTS TIMEOUT\n");
     return false;
   }
 
@@ -151,23 +151,23 @@ bool Si446x::sendCommand(uint8_t cmd, const uint8_t *data, uint8_t dataLength, u
 {
   if (pollCTS) {
     if (!waitForCTS()) {
-      dbg.print("No CTS received\n");
+      //dbg.print("No CTS received\n");
       _isError = true;
       return false;
     }
   }
   
   SPIDevice::select();
-  dbg.print("> ");
+  //dbg.print("> ");
   SPIDevice::write(cmd);
-  dbg.print(cmd); dbg.print(" ");
+  //dbg.print(cmd); dbg.print(" ");
   for(; dataLength; dataLength--) {
     uint8_t x = *(data++);
     SPIDevice::write(x);
-    dbg.print(x); dbg.print(" ");
+    //dbg.print(x); dbg.print(" ");
   }
   delayMicroseconds(1); /* Select hold time min 50 ns */
-  dbg.print("\n");
+  //dbg.print("\n");
   SPIDevice::release();
 
   if (replyLength == 0) {
@@ -193,16 +193,16 @@ bool Si446x::sendImmediate(uint8_t cmd, uint8_t *reply, uint8_t replyLength, boo
   }
   
   SPIDevice::select();
-  dbg.print("> ");  
+  //dbg.print("> ");  
   SPIDevice::write(cmd);
-  dbg.print(cmd); dbg.print(" < ");
+  //dbg.print(cmd); dbg.print(" < ");
   for(; replyLength; replyLength--) {
     uint8_t x = SPIDevice::read();
     SPIDevice::write(x);
     *(reply++) = x;
   }
   delayMicroseconds(1); /* Select hold time min 50 ns */
-  dbg.print("\n");
+  //dbg.print("\n");
   SPIDevice::release();
 
   return true;
@@ -410,6 +410,11 @@ void Si446x::startRX(uint8_t channel, uint16_t pktLength, State preambleTimeoutS
 
 void Si446x::writeTX(const uint8_t *data, uint8_t length)
 {
+  dbg.print("TX: ");
+  for (uint8_t idx = 0; idx < length; idx++) {
+    dbg.print(data[idx]); dbg.print(" ");
+  }
+  dbg.print("\n");
   sendCommand(SI_CMD_WRITE_TX_FIFO, data, length, 0, 0, false);
 }
 

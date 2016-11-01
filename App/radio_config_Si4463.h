@@ -19,13 +19,13 @@
 
 // INPUT DATA
 /*
-// Crys_freq(Hz): 26000000    Crys_tol(ppm): 2    IF_mode: 2    High_perf_Ch_Fil: 1    OSRtune: 0    Ch_Fil_Bw_AFC: 0    ANT_DIV: 0    PM_pattern: 0    
-// MOD_type: 3    Rsymb(sps): 1000    Fdev(Hz): 1000    RXBW(Hz): 150000    Manchester: 0    AFC_en: 1    Rsymb_error: 0.0    Chip-Version: 2    
+// Crys_freq(Hz): 26000000    Crys_tol(ppm): 10    IF_mode: 2    High_perf_Ch_Fil: 1    OSRtune: 0    Ch_Fil_Bw_AFC: 0    ANT_DIV: 0    PM_pattern: 0    
+// MOD_type: 3    Rsymb(sps): 10000    Fdev(Hz): 10000    RXBW(Hz): 150000    Manchester: 0    AFC_en: 1    Rsymb_error: 0.0    Chip-Version: 2    
 // RF Freq.(MHz): 868.14    API_TC: 29    fhst: 250000    inputBW: 0    BERT: 0    RAW_dout: 0    D_source: 0    Hi_pfm_div: 1    
-// API_ARR_Det_en: 0    Fdev_error: 0    API_ETSI: 2    
+// API_ARR_Det_en: 0    Fdev_error: 0    API_ETSI: 0    
 // 
 // # RX IF frequency is  -406250 Hz
-// # WB filter 3 (BW =  10.03 kHz);  NB-filter 3 (BW = 10.03 kHz)
+// # WB filter 1 (BW =  66.13 kHz);  NB-filter 1 (BW = 66.13 kHz)
 // 
 // Modulation index: 2
 */
@@ -34,10 +34,10 @@
 // CONFIGURATION PARAMETERS
 #define RADIO_CONFIGURATION_DATA_RADIO_XO_FREQ                     26000000L
 #define RADIO_CONFIGURATION_DATA_CHANNEL_NUMBER                    0x00
-#define RADIO_CONFIGURATION_DATA_RADIO_PACKET_LENGTH               0x10
+#define RADIO_CONFIGURATION_DATA_RADIO_PACKET_LENGTH               0x07
 #define RADIO_CONFIGURATION_DATA_RADIO_STATE_AFTER_POWER_UP        0x03
 #define RADIO_CONFIGURATION_DATA_RADIO_DELAY_CNT_AFTER_RESET       0xF000
-#define RADIO_CONFIGURATION_DATA_CUSTOM_PAYLOAD					   {0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5}
+#define RADIO_CONFIGURATION_DATA_CUSTOM_PAYLOAD					   {0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5, 0xC5}
 
 #include "si446x_patch.h"
 
@@ -48,16 +48,13 @@
 // Command:                  RF_POWER_UP
 // Description:              Command to power-up the device and select the operational mode and functionality.
 */
-#define RF_POWER_UP 0x02, 0x81, 0x01, 0x01, 0x8C, 0xBA, 0x80
-#define RF_POWER_UP_XO 0x02, 0x81, 0x00, 0x01, 0x8C, 0xBA, 0x80
-//#define RF_POWER_UP_NO_PATCH 0x02, 0x01, 0x01, 0x01, 0x8C, 0xBA, 0x80
+#define RF_POWER_UP 0x02, 0x81, 0x00, 0x01, 0x8C, 0xBA, 0x80
 
 /*
 // Command:                  RF_GPIO_PIN_CFG
 // Description:              Configures the GPIO pins.
 */
-//#define RF_GPIO_PIN_CFG 0x13, 0x01, 0x01, 0x01, 0x01, 0x40, 0x40, 0x00
-#define RF_GPIO_PIN_CFG 0x13, 0x01, 0x01, 0x01, 0x08, 0x00, 0x00, 0x00
+#define RF_GPIO_PIN_CFG 0x13, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 
 /*
 // Set properties:           RF_GLOBAL_XO_TUNE_1
@@ -145,7 +142,7 @@
 //   MODEM_BCR_OSR_1 - RX BCR/Slicer oversampling rate (12-bit unsigned number).
 //   MODEM_BCR_OSR_0 - RX BCR/Slicer oversampling rate (12-bit unsigned number).
 */
-#define RF_MODEM_TX_RAMP_DELAY_12 0x11, 0x20, 0x0C, 0x18, 0x01, 0x00, 0x0A, 0x03, 0xC0, 0x00, 0xB0, 0x10, 0x0C, 0xF9, 0x00, 0x44
+#define RF_MODEM_TX_RAMP_DELAY_12 0x11, 0x20, 0x0C, 0x18, 0x01, 0x00, 0x08, 0x03, 0xC0, 0x00, 0xB0, 0x10, 0x0C, 0xE8, 0x00, 0x44
 
 /*
 // Set properties:           RF_MODEM_BCR_NCO_OFFSET_2_12
@@ -522,7 +519,7 @@
 //   PKT_WHT_BIT_NUM - Selects which bit of the LFSR (used to generate the PN / data whitening sequence) is used as the output bit for data scrambling.
 //   PKT_CONFIG1 - General configuration bits for transmission or reception of a packet.
 */
-#define RF_PKT_CRC_CONFIG_7 0x11, 0x12, 0x07, 0x00, 0x00, 0x01, 0x08, 0xFF, 0xFF, 0x20, 0x12
+#define RF_PKT_CRC_CONFIG_7 0x11, 0x12, 0x07, 0x00, 0x00, 0x01, 0x08, 0xFF, 0xFF, 0x20, 0x02
 
 /*
 // Set properties:           RF_PKT_LEN_12
@@ -544,7 +541,7 @@
 //   PKT_FIELD_2_LENGTH_7_0 - Unsigned 13-bit Field 2 length value.
 //   PKT_FIELD_2_CONFIG - General data processing and packet configuration bits for Field 2.
 */
-#define RF_PKT_LEN_12 0x11, 0x12, 0x0C, 0x08, 0x00, 0x00, 0x00, 0x30, 0x30, 0x00, 0x10, 0x07, 0x00, 0x00, 0x00, 0x00
+#define RF_PKT_LEN_12 0x11, 0x12, 0x0C, 0x08, 0x00, 0x00, 0x00, 0x30, 0x30, 0x00, 0x07, 0x04, 0x00, 0x00, 0x00, 0x00
 
 /*
 // Set properties:           RF_PKT_FIELD_2_CRC_CONFIG_12
@@ -643,7 +640,7 @@
 //   MODEM_FREQ_DEV_2 - 17-bit unsigned TX frequency deviation word.
 //   MODEM_FREQ_DEV_1 - 17-bit unsigned TX frequency deviation word.
 */
-#define RF_MODEM_MOD_TYPE_12_1 0x11, 0x20, 0x0C, 0x00, 0x03, 0x00, 0x07, 0x00, 0x9C, 0x40, 0x05, 0x8C, 0xBA, 0x80, 0x00, 0x00
+#define RF_MODEM_MOD_TYPE_12_1 0x11, 0x20, 0x0C, 0x00, 0x03, 0x00, 0x07, 0x06, 0x1A, 0x80, 0x05, 0x8C, 0xBA, 0x80, 0x00, 0x01
 
 /*
 // Set properties:           RF_MODEM_FREQ_DEV_0_1_1
@@ -654,7 +651,7 @@
 // Descriptions:
 //   MODEM_FREQ_DEV_0 - 17-bit unsigned TX frequency deviation word.
 */
-#define RF_MODEM_FREQ_DEV_0_1_1 0x11, 0x20, 0x01, 0x0C, 0x28
+#define RF_MODEM_FREQ_DEV_0_1_1 0x11, 0x20, 0x01, 0x0C, 0x93
 
 /*
 // Set properties:           RF_MODEM_TX_RAMP_DELAY_12_1
@@ -676,7 +673,7 @@
 //   MODEM_BCR_OSR_1 - RX BCR/Slicer oversampling rate (12-bit unsigned number).
 //   MODEM_BCR_OSR_0 - RX BCR/Slicer oversampling rate (12-bit unsigned number).
 */
-#define RF_MODEM_TX_RAMP_DELAY_12_1 0x11, 0x20, 0x0C, 0x18, 0x01, 0x80, 0x0A, 0x03, 0xC0, 0x00, 0xB0, 0x20, 0x14, 0xF9, 0x01, 0x96
+#define RF_MODEM_TX_RAMP_DELAY_12_1 0x11, 0x20, 0x0C, 0x18, 0x01, 0x80, 0x08, 0x03, 0xC0, 0x00, 0x20, 0x10, 0x00, 0xE8, 0x00, 0xD9
 
 /*
 // Set properties:           RF_MODEM_BCR_NCO_OFFSET_2_12_1
@@ -698,7 +695,7 @@
 //   MODEM_AFC_GAIN_1 - Sets the gain of the PLL-based AFC acquisition loop, and provides miscellaneous control bits for AFC functionality.
 //   MODEM_AFC_GAIN_0 - Sets the gain of the PLL-based AFC acquisition loop, and provides miscellaneous control bits for AFC functionality.
 */
-#define RF_MODEM_BCR_NCO_OFFSET_2_12_1 0x11, 0x20, 0x0C, 0x24, 0x01, 0x42, 0xA4, 0x00, 0xA1, 0x02, 0xC2, 0x00, 0x04, 0x23, 0x80, 0x02
+#define RF_MODEM_BCR_NCO_OFFSET_2_12_1 0x11, 0x20, 0x0C, 0x24, 0x02, 0x5C, 0xF3, 0x01, 0x2E, 0x02, 0xC2, 0x00, 0x04, 0x23, 0x80, 0x11
 
 /*
 // Set properties:           RF_MODEM_AFC_LIMITER_1_3_1
@@ -711,7 +708,7 @@
 //   MODEM_AFC_LIMITER_0 - Set the AFC limiter value.
 //   MODEM_AFC_MISC - Specifies miscellaneous AFC control bits.
 */
-#define RF_MODEM_AFC_LIMITER_1_3_1 0x11, 0x20, 0x03, 0x30, 0x10, 0x72, 0xC0
+#define RF_MODEM_AFC_LIMITER_1_3_1 0x11, 0x20, 0x03, 0x30, 0x0C, 0xA5, 0xC0
 
 /*
 // Set properties:           RF_MODEM_AGC_CONTROL_1_1
@@ -744,7 +741,7 @@
 //   MODEM_OOK_CNT1 - OOK control.
 //   MODEM_OOK_MISC - Selects the detector(s) used for demodulation of an OOK signal, or for demodulation of a (G)FSK signal when using the asynchronous demodulator.
 */
-#define RF_MODEM_AGC_WINDOW_SIZE_12_1 0x11, 0x20, 0x0C, 0x38, 0x11, 0x59, 0x59, 0x80, 0x1A, 0x80, 0x00, 0x00, 0x2A, 0x0C, 0xA4, 0x22
+#define RF_MODEM_AGC_WINDOW_SIZE_12_1 0x11, 0x20, 0x0C, 0x38, 0x11, 0x2F, 0x2F, 0x80, 0x1A, 0x80, 0x00, 0x00, 0x29, 0x0C, 0xA4, 0x22
 
 /*
 // Set properties:           RF_MODEM_RAW_CONTROL_10
@@ -764,7 +761,7 @@
 //   MODEM_RSSI_CONTROL2 - RSSI Jump Detection control.
 //   MODEM_RSSI_COMP - RSSI compensation value.
 */
-#define RF_MODEM_RAW_CONTROL_10 0x11, 0x20, 0x0A, 0x45, 0x83, 0x00, 0x66, 0x02, 0x00, 0xFF, 0x06, 0x00, 0x18, 0x40
+#define RF_MODEM_RAW_CONTROL_10 0x11, 0x20, 0x0A, 0x45, 0x83, 0x00, 0xC0, 0x02, 0x00, 0xFF, 0x06, 0x00, 0x18, 0x40
 
 /*
 // Set properties:           RF_MODEM_RAW_SEARCH2_2_1
@@ -814,7 +811,7 @@
 //   MODEM_DSA_RSSI - Signal Arrival Detect RSSI Qualifier Config
 //   MODEM_DSA_MISC - Miscellaneous detection of signal arrival bits.
 */
-#define RF_MODEM_DSA_CTRL1_5_1 0x11, 0x20, 0x05, 0x5B, 0x40, 0x04, 0x06, 0x78, 0x20
+#define RF_MODEM_DSA_CTRL1_5_1 0x11, 0x20, 0x05, 0x5B, 0x40, 0x04, 0x08, 0x78, 0x20
 
 /*
 // Set properties:           RF_MODEM_CHFLT_RX1_CHFLT_COE13_7_0_12_1
@@ -836,7 +833,7 @@
 //   MODEM_CHFLT_RX1_CHFLT_COE3_7_0 - Filter coefficients for the first set of RX filter coefficients.
 //   MODEM_CHFLT_RX1_CHFLT_COE2_7_0 - Filter coefficients for the first set of RX filter coefficients.
 */
-#define RF_MODEM_CHFLT_RX1_CHFLT_COE13_7_0_12_1 0x11, 0x21, 0x0C, 0x00, 0xCC, 0xA1, 0x30, 0xA0, 0x21, 0xD1, 0xB9, 0xC9, 0xEA, 0x05, 0x12, 0x11
+#define RF_MODEM_CHFLT_RX1_CHFLT_COE13_7_0_12_1 0x11, 0x21, 0x0C, 0x00, 0xFF, 0xBA, 0x0F, 0x51, 0xCF, 0xA9, 0xC9, 0xFC, 0x1B, 0x1E, 0x0F, 0x01
 
 /*
 // Set properties:           RF_MODEM_CHFLT_RX1_CHFLT_COE1_7_0_12_1
@@ -858,7 +855,7 @@
 //   MODEM_CHFLT_RX2_CHFLT_COE9_7_0 - Filter coefficients for the second set of RX filter coefficients.
 //   MODEM_CHFLT_RX2_CHFLT_COE8_7_0 - Filter coefficients for the second set of RX filter coefficients.
 */
-#define RF_MODEM_CHFLT_RX1_CHFLT_COE1_7_0_12_1 0x11, 0x21, 0x0C, 0x0C, 0x0A, 0x04, 0x15, 0xFC, 0x03, 0x00, 0xCC, 0xA1, 0x30, 0xA0, 0x21, 0xD1
+#define RF_MODEM_CHFLT_RX1_CHFLT_COE1_7_0_12_1 0x11, 0x21, 0x0C, 0x0C, 0xFC, 0xFD, 0x15, 0xFF, 0x00, 0x0F, 0xFF, 0xBA, 0x0F, 0x51, 0xCF, 0xA9
 
 /*
 // Set properties:           RF_MODEM_CHFLT_RX2_CHFLT_COE7_7_0_12_1
@@ -880,7 +877,7 @@
 //   MODEM_CHFLT_RX2_CHFLT_COEM2 - Filter coefficients for the second set of RX filter coefficients.
 //   MODEM_CHFLT_RX2_CHFLT_COEM3 - Filter coefficients for the second set of RX filter coefficients.
 */
-#define RF_MODEM_CHFLT_RX2_CHFLT_COE7_7_0_12_1 0x11, 0x21, 0x0C, 0x18, 0xB9, 0xC9, 0xEA, 0x05, 0x12, 0x11, 0x0A, 0x04, 0x15, 0xFC, 0x03, 0x00
+#define RF_MODEM_CHFLT_RX2_CHFLT_COE7_7_0_12_1 0x11, 0x21, 0x0C, 0x18, 0xC9, 0xFC, 0x1B, 0x1E, 0x0F, 0x01, 0xFC, 0xFD, 0x15, 0xFF, 0x00, 0x0F
 
 /*
 // Set properties:           RF_PA_MODE_4
@@ -958,19 +955,7 @@
 // DO NOT EDIT/MODIFY BELOW THIS LINE!
 // --------------------------------------------
 
-
-
 #ifndef FIRMWARE_LOAD_COMPILE
-
-#define RADIO_CONFIGURATION_DATA_ARRAY2 { \
-        SI446X_PATCH_CMDS, \
-        0x07, RF_POWER_UP, \
-        0x08, RF_GPIO_PIN_CFG, \
-        0x05, RF_GLOBAL_XO_TUNE_1, \
-        0x05, RF_GLOBAL_CONFIG_1, \
-        0x00 \
-}
-
 #define RADIO_CONFIGURATION_DATA_ARRAY { \
         SI446X_PATCH_CMDS, \
         0x07, RF_POWER_UP, \
