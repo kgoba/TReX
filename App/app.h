@@ -8,7 +8,7 @@ extern "C" {
 }
 
 
-#include "SPI.h"
+#include "SPI.hh"
 
 void delay(uint32_t millis);
 void delayMicroseconds(uint32_t micros);
