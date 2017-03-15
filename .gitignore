@@ -1,6 +1,8 @@
 *.o
 *.a
+*.d
 *.bin
+*.elf
 *.out
 *.map
 *.list
@@ -11,4 +13,4 @@
 .depend
 .settings/
 *.ioc
-
+.DS_Store
