@@ -7,11 +7,12 @@
 #include <libopencm3/cm3/systick.h>
 #include <libopencm3/cm3/nvic.h>
 #include <libopencm3/stm32/flash.h>
+#include <libopencm3/stm32/usart.h>
 
 #include <stdint.h>
 #include <stdio.h>
 
-#include "silabs/ezradio.hh"
+#include "silabspp/ezradio.hh"
 
 #include "os.hh"
 #include "pins.hh"
@@ -19,26 +20,110 @@
 
 /*  PIN MAP
     -----------------------------
-    PA12    Out     LED
-    PA10    UART1   Dbg_RX      AF1
-    PA9     UART1   Dbg_TX      AF1
-    PA7     SPI1    MOSI        AF0
-    PA6     SPI1    MISO        AF0
-    PA5     SPI1    SCK         AF0
-    PA4     Out     !TRX_CS
-    PA3     UART2   GPS_RX      AF1
-    PA2     UART2   GPS_TX      AF1
+    PA0     Out     TCXO_nEN
     PA1     Out     TRX_SHDN
-    PA0     Out     !TCXO_EN
-    PB11    I2C1    SDA         AF1
-    PB10    I2C1    SCL         AF1
-    PB7     Out     !GPS_EN
-    PB6     Out     !FLASH_CS
-    PB2     In/Out  TRX_GPIO0
+    PA2     UART2   GPS_TX      AF1
+    PA3     UART2   GPS_RX      AF1
+    PA4     Out     TRX_nCS
+    PA5     SPI1    SCK         AF0
+    PA6     SPI1    MISO        AF0
+    PA7     SPI1    MOSI        AF0
+    PA9     UART1   Dbg_TX      AF1
+    PA10    UART1   Dbg_RX      AF1
+    PA12    Out     LED
+    PB0     In      TRX_nIRQ
     PB1     In/Out  TRX_GPIO1
-    PB0     In      !TRX_IRQ
+    PB2     In/Out  TRX_GPIO0
+    PB6     Out     FLASH_nCS
+    PB7     Out     GPS_nEN
+    PB10    I2C1    SCL         AF1
+    PB11    I2C1    SDA         AF1
     PC13    In      GPS_PPS
 */
+
+template<uint32_t USARTx>
+class USARTBase {
+public:
+    static void enableClock() {
+        rcc_periph_clock_enable(clock);
+    }
+
+    static void setup() {
+        usart_set_baudrate(USARTx, 9600);
+        usart_set_databits(USARTx, 8);
+        usart_set_stopbits(USARTx, USART_CR2_STOP_1_0BIT);
+        usart_set_mode(USARTx, USART_MODE_TX_RX);
+        usart_set_parity(USARTx, USART_PARITY_NONE);
+        usart_set_flow_control(USARTx, USART_FLOWCONTROL_NONE);
+    }
+
+    static void enableRXInterrupt() {
+        usart_enable_rx_interrupt(USARTx);
+    }
+
+    static void enable() {
+        usart_enable(USARTx);
+    }
+
+    static void enableIRQ() {
+        nvic_enable_irq(irqn);
+    }
+
+    static const AlternateFunction  afRX;
+    static const AlternateFunction  afTX;
+    static const rcc_periph_clken   clock;
+    static const uint8_t            irqn;
+};
+
+template<> const AlternateFunction  USARTBase<USART1>::afRX     = USART1_RX_AF;
+template<> const AlternateFunction  USARTBase<USART1>::afTX     = USART1_TX_AF;
+template<> const rcc_periph_clken   USARTBase<USART1>::clock    = RCC_USART1;
+template<> const uint8_t            USARTBase<USART1>::irqn     = NVIC_USART1_IRQ;
+
+template<> const AlternateFunction  USARTBase<USART2>::afRX     = USART2_RX_AF;
+template<> const AlternateFunction  USARTBase<USART2>::afTX     = USART2_TX_AF;
+template<> const rcc_periph_clken   USARTBase<USART2>::clock    = RCC_USART2;
+template<> const uint8_t            USARTBase<USART2>::irqn     = NVIC_USART2_IRQ;
+
+
+template<uint32_t USARTx, typename PinRX, typename PinTX>
+class USART : public USARTBase<USARTx> {
+public:
+    typedef AlternateGPIO<PinRX, USARTBase<USARTx>::afRX> PinRXAF;
+    typedef AlternateGPIO<PinTX, USARTBase<USARTx>::afTX> PinTXAF;
+    typedef USARTBase<USARTx> Base;
+
+    static void enableClock() {
+        PinRX::enableClock();
+        PinTX::enableClock();
+        Base::enableClock();
+    }
+    
+    static void setup() {
+        PinRXAF::setup();
+        PinTXAF::setup();
+        Base::setup();
+    }
+};
+
+
+DigitalOutput<PA12> pinLED;
+DigitalOutput<PB6>  pinFlashSelect;
+DigitalOutput<PB7>  pinGPSShutdown;
+DigitalOutput<PA0>  pinTCXOShutdown;
+DigitalOutput<PA1>  pinTXShutdown;
+DigitalOutput<PA4>  pinTXSelect;
+//DigitalOutput<PB1>  pinTXGPIO1;
+DigitalOutput<PB2>  pinTXGPIO0;
+//DigitalInput<PB0>   pinTXIRQ;
+//DigitalInput<PC13>  pinGPSPPS;
+
+//I2C<I2C1, PB11, PB10>     i2cBus;
+//SPI<SPI1, PA7, PA6, PA5>  spiBus;
+USART<USART2, PA3, PA2>     usartGPS;
+USART<USART1, PA10, PA9>    usartDebug;
+
+
 
 /*
 class SPI1Config {
@@ -155,10 +240,6 @@ void transmit(uint8_t *data) {
 }
 */
 
-DigitalOutput<GPIOA, GPIO1> pinTXShutdown;
-DigitalOutput<GPIOA, GPIO0> pinTCXOShutdown;
-DigitalOutput<GPIOA, GPIO4> pinTXSelect;
-
 
 #define SPI_GPIO    GPIOA
 #define SPI_AF      GPIO_AF0
@@ -201,24 +282,32 @@ void spi_setup()
 
 }
 
-DigitalOutput<GPIOA, GPIO12> pinLED;
-
 void setup()
 {
     usart_init();
-    printf("*** RESET ***\n");
+    //printf("*** RESET ***\n");
 
-    pinLED.enable();    
+    GPIOPort<GPIOA>::enableClock();
+    GPIOPort<GPIOB>::enableClock();
+    GPIOPort<GPIOC>::enableClock();
+
+    usartGPS.enableClock();
+    usartDebug.enableClock();
+    
+    usartGPS.setup();
+    usartDebug.setup();
+
+    pinLED.setup();    
     
     spi_setup();
     
-    pinTCXOShutdown.enable();
+    pinTCXOShutdown.setup();
     pinTCXOShutdown.clear();
     
-    pinTXShutdown.enable();
+    pinTXShutdown.setup();
     pinTXShutdown.clear();
     
-    pinTXSelect.enable();
+    pinTXSelect.setup();
     pinTXSelect.set();
     
     //radioDev.enable();
@@ -238,7 +327,7 @@ void loop()
     spi_send8(SPI1, (uint8_t)0x44);
     //printf("Sent 0x44\n");
     spi_send8(SPI1, (uint8_t)0xff);
-    printf("Read %02x back\n", spi_read8(SPI1));
+    //printf("Read %02x back\n", spi_read8(SPI1));
     pinTXSelect.set();
     
     pinLED.clear();

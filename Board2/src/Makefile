@@ -8,35 +8,35 @@ ifeq ($(DEVICE),stm32f446re)
   ARCH            += -mcpu=cortex-m4
   ARCH            += -mfloat-abi=hard -mfpu=fpv4-sp-d16
   FAMILY          = STM32F4
-  LDSCRIPT        = stm32f446re.ld
+  LDSCRIPT        = ../stm32f446re.ld
   OPENCM3_LIB     = opencm3_stm32f4
 else 
 ifeq ($(DEVICE),stm32f103c8)
   ARCH            += -mcpu=cortex-m0
   ARCH            += -mfloat-abi=soft
   FAMILY          = STM32F1
-  LDSCRIPT        = stm32f103x8.ld
+  LDSCRIPT        = ../stm32f103x8.ld
   OPENCM3_LIB     = opencm3_stm32f1
 else
   ARCH            += -mcpu=cortex-m0
   ARCH            += -mfloat-abi=soft
   FAMILY          = STM32F0
-  LDSCRIPT        = stm32f030x8.ld
+  LDSCRIPT        = ../stm32f030x8.ld
   OPENCM3_LIB     = opencm3_stm32f0
 endif
 endif
 
-OPENCM3_DIR     = libopencm3
+OPENCM3_DIR     = ../libopencm3
 #SRC             = $(wildcard,*.c) $(wildcard,*.cc)
 #OBJS		= $(patsubst *.c,*.o,$(SRC)) $(patsubst *.cc,*.o,$(SRC))
 OBJS            = test2.o 
 OBJS		+= main.o os.o usart.o
-OBJS            += silabs/ezradio.o
-INCLUDE         = -I.
+OBJS            += ../silabspp/ezradio.o
+INCLUDE         = -I. -I..
 
 INCLUDE         += -I$(OPENCM3_DIR)/include/
-CFLAGS          += -Os -ggdb3 $(INCLUDE) -D$(FAMILY) $(ARCH) -fno-rtti -ffunction-sections -fdata-sections
-CXXFLAGS        += -Os -ggdb3 $(INCLUDE) -D$(FAMILY) $(ARCH) -fno-rtti -ffunction-sections -fdata-sections
+CFLAGS          += -Os -ggdb3 $(INCLUDE) -D$(FAMILY) $(ARCH) -ffunction-sections -fdata-sections
+CXXFLAGS        += -Os -ggdb3 $(INCLUDE) -D$(FAMILY) $(ARCH) -fno-rtti -fno-exceptions -ffunction-sections -fdata-sections
 CPPFLAGS        += -MD
 LDFLAGS         += -static -nostartfiles $(ARCH) -fno-rtti
 LDFLAGS		+= -Wl,--start-group -Wl,--end-group -Wl,--gc-sections
