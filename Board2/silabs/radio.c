@@ -41,14 +41,14 @@ uint8_t si446x_waitForCTS()
     }
 }
 
-uint8_t si446x_sendcmd(uint8_t tx_len, uint8_t rx_len, const uint8_t* data)
+uint8_t si446x_sendcmd(uint8_t tx_len, const uint8_t* txData, uint8_t rx_len, uint8_t *rxData)
 {
     int j, k;
     
     LOG("Sending ");
     si446x_select();    
     for (j = 0; j < tx_len; j++) {
-        uint8_t wordb = data[j];
+        uint8_t wordb = txData[j];
         si446x_xfer(wordb);
         LOG("%02x ", wordb);
     } 
@@ -69,6 +69,7 @@ uint8_t si446x_sendcmd(uint8_t tx_len, uint8_t rx_len, const uint8_t* data)
         LOG("Receiving ");
         for (k = 1; k < rx_len; k++) {
             uint8_t recv = si446x_xfer(0xFF);
+            if (rxData) rxData[k - 1] = recv;
             LOG("%02x ", recv);
         }
         LOG("\n");
@@ -93,12 +94,12 @@ uint8_t si446x_boot(uint32_t VCOXFrequency)
     // Power up radio module
     // No patch, boot main app. img, TCXO, return 1 byte
     const uint8_t init_command[] = {0x02, 0x01, 0x01, x3, x2, x1, x0};
-    rc = si446x_sendcmd(7, 1, init_command);
+    rc = si446x_sendcmd(7, init_command, 1, NULL);
     if (rc) return rc;
         
     // Radio ready: clear all pending interrupts and get the interrupt status back
     const uint8_t get_int_status_command[] = {0x20, 0x00, 0x00, 0x00}; 
-    rc = si446x_sendcmd(4, 9, get_int_status_command);
+    rc = si446x_sendcmd(4, get_int_status_command, 9, NULL);
     if (rc) return rc;
         
     return rc;
@@ -107,7 +108,7 @@ uint8_t si446x_boot(uint32_t VCOXFrequency)
 uint8_t si446x_setupGPIO(uint8_t gpio0, uint8_t gpio1, uint8_t gpio2, uint8_t gpio3, uint8_t nirq, uint8_t sdo, uint8_t genConfig) 
 {
     const uint8_t gpio_pin_cfg_command[] = { 0x13, gpio0, gpio1, gpio2, gpio3, nirq, sdo, genConfig }; 
-    return si446x_sendcmd(8, 8, gpio_pin_cfg_command);
+    return si446x_sendcmd(8, gpio_pin_cfg_command, 8, NULL);
 }
 
 uint8_t si446x_setupGPIO0(uint8_t gpio0) 
@@ -146,7 +147,7 @@ uint8_t si446x_setFrequency(uint32_t frequency, uint32_t deviation)
     // Set the band parameter
     unsigned int sy_sel = 8;  
     uint8_t set_band_property_command[] = {0x11, 0x20, 0x01, 0x51, (band + sy_sel)};
-    rc = si446x_sendcmd(5, 1, set_band_property_command);
+    rc = si446x_sendcmd(5, set_band_property_command, 1, NULL);
     if (rc) return rc;
 
     // Set the pll parameters
@@ -156,7 +157,7 @@ uint8_t si446x_setFrequency(uint32_t frequency, uint32_t deviation)
 
     // Assemble parameter string
     uint8_t set_frequency_property_command[] = {0x11, 0x40, 0x04, 0x00, n, m2, m1, m0};
-    rc = si446x_sendcmd(8, 1, set_frequency_property_command);
+    rc = si446x_sendcmd(8, set_frequency_property_command, 1, NULL);
     if (rc) return rc;
 
     // Set frequency deviation
@@ -165,13 +166,13 @@ uint8_t si446x_setFrequency(uint32_t frequency, uint32_t deviation)
     //rc = si446x_sendcmd(7, 1, set_frequency_separation);
     
     uint32_t x = ((uint64_t)(1ul << 18) * outdiv * deviation) / si446x_VCOXFrequency;
-    char set_frequency_deviation[] = { 
+    uint8_t set_frequency_deviation[] = { 
       0x11, 0x20, 0x03, 0x0A,
       (uint8_t)(x >> 16),
       (uint8_t)(x >> 8),
       (uint8_t)(x >> 0)
     };
-    rc = si446x_sendcmd(7, 1, set_frequency_deviation);
+    rc = si446x_sendcmd(7, set_frequency_deviation, 1, NULL);
     
     /* Needed for data rate to function correctly */
     if (!rc) rc = si446x_setNCOModulo(0);
@@ -184,13 +185,13 @@ uint8_t si446x_setPower(uint8_t powerlevel)
     if (powerlevel > 0x7f)
         powerlevel = 0x7f;
     uint8_t set_power_level_command[] = {0x11, 0x22, 0x01, 0x01, powerlevel};
-    return si446x_sendcmd(5, 1, set_power_level_command);
+    return si446x_sendcmd(5, set_power_level_command, 1, NULL);
 }
 
 uint8_t si446x_setModulation(uint8_t modulation)
 {
     uint8_t set_modem_mod_type_command[] = {0x11,     0x20,     0x01,     0x00,       modulation}; 
-    return si446x_sendcmd(5, 1, set_modem_mod_type_command);
+    return si446x_sendcmd(5, set_modem_mod_type_command, 1, NULL);
 }
 
 uint8_t si446x_setDataRate(uint32_t rate) 
@@ -199,7 +200,7 @@ uint8_t si446x_setDataRate(uint32_t rate)
     uint8_t x1 = (uint8_t)(rate >> 8);
     uint8_t x0 = (uint8_t)(rate >> 0);
     uint8_t set_data_rate_command[] = {0x11, 0x20, 0x03, 0x03, x2, x1, x0};
-    return si446x_sendcmd(7, 1, set_data_rate_command);
+    return si446x_sendcmd(7, set_data_rate_command, 1, NULL);
 }
 
 static uint8_t si446x_setNCOModulo(uint8_t osr) 
@@ -221,27 +222,32 @@ static uint8_t si446x_setNCOModulo(uint8_t osr)
         (uint8_t)(ncoFreq),
     };
 
-    return si446x_sendcmd(8, 1, set_nco_modulo_command);
+    return si446x_sendcmd(8, set_nco_modulo_command, 1, NULL);
+}
+
+uint8_t si446x_getPartID(uint8_t *outPartID)
+{
+    uint8_t cmd[] = {0x01};
+    return si446x_sendcmd(1, cmd, 9, outPartID);
 }
 
 uint8_t si446x_tune()
 {
     // Tune tx 
-    char change_state_command[] = {0x34, 0x05}; //  Change to TX tune state
-    return si446x_sendcmd(2, 1, change_state_command);
+    uint8_t change_state_command[] = {0x34, 0x05};
+    return si446x_sendcmd(2, change_state_command, 1, NULL);
 }
 
 uint8_t si446x_txOn(void)
 { 
-    int rc;
     // Change to TX state
     uint8_t change_state_command[] = {0x34, 0x07};
-    return si446x_sendcmd(2, 1, change_state_command);
+    return si446x_sendcmd(2, change_state_command, 1, NULL);
 }
 
 uint8_t si446x_txOff(void)
 {
     // Change to ready state
     uint8_t change_state_command[] = {0x34, 0x03}; 
-    return si446x_sendcmd(2, 1, change_state_command);
+    return si446x_sendcmd(2, change_state_command, 1, NULL);
 }

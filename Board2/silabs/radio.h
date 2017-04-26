@@ -39,9 +39,11 @@
 /* This can be combined with the previous */
 #define EZR_GPIO_MODE_PULLUP            0x40
 
-uint8_t si446x_sendcmd(uint8_t tx_len, uint8_t rx_len, const uint8_t* data);
+uint8_t si446x_sendcmd(uint8_t tx_len, const uint8_t* txData, uint8_t rx_len, uint8_t *rxData);
 
 uint8_t si446x_boot(uint32_t VCOXFrequency);
+
+uint8_t si446x_getPartID(uint8_t *outPartID);
 
 uint8_t si446x_setFrequency(uint32_t frequency, uint32_t deviation);
 uint8_t si446x_setModulation(uint8_t modulation);
@@ -51,6 +53,8 @@ uint8_t si446x_setPower(uint8_t powerlevel);
 uint8_t si446x_setupGPIO0(uint8_t mode);
 uint8_t si446x_setupGPIO1(uint8_t mode); 
 
+/** Change to TX tune state */
 uint8_t si446x_tune();
+
 uint8_t si446x_txOn();
 uint8_t si446x_txOff();

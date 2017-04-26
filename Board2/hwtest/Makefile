@@ -13,7 +13,7 @@ LDSCRIPT        = ../stm32f030x8.ld
 OPENCM3_LIB     = opencm3_stm32f0
 
 SRC             = $(wildcard,*.c) $(wildcard,*.cc)
-OBJS            = test1.o ../silabs/radio.o radio_hal.o
+OBJS            = test1.o ../silabs/radio.o radio_hal.o systick.o debug.o afsk.o
 INCLUDE         = -I. -I..
 
 INCLUDE         += -I$(OPENCM3_DIR)/include/
