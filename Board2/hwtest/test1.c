@@ -19,6 +19,29 @@
 #define TRANSMIT_FREQUENCY_HZ  144250000uL
 #define AFSK_DEVIATION_HZ            500uL
 
+/*  PIN MAP
+    -----------------------------
+    PA0     Out     TCXO_nEN
+    PA1     Out     TRX_SHDN
+    PA2     UART2   GPS_TX      AF1
+    PA3     UART2   GPS_RX      AF1
+    PA4     Out     TRX_nCS
+    PA5     SPI1    SCK         AF0
+    PA6     SPI1    MISO        AF0
+    PA7     SPI1    MOSI        AF0
+    PA9     UART1   Dbg_TX      AF1
+    PA10    UART1   Dbg_RX      AF1
+    PA12    Out     LED
+    PB0     In      TRX_nIRQ
+    PB1     In/Out  TRX_GPIO1
+    PB2     In/Out  TRX_GPIO0
+    PB6     Out     FLASH_nCS
+    PB7     Out     GPS_nEN
+    PB10    I2C1    SCL         AF1
+    PB11    I2C1    SDA         AF1
+    PC13    In      GPS_PPS
+*/
+
 void clock_setup()
 {
     //rcc_clock_setup_in_hsi_out_16mhz();
@@ -27,6 +50,61 @@ void clock_setup()
 
 void gpio_setup()
 {
+}
+
+void gps_setup(void)
+{
+	/* Setup GPIO pins for USART1 transmit/receive. */
+    rcc_periph_clock_enable(RCC_GPIOA);
+	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO2);    // TX
+	gpio_mode_setup(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO3);   // RX
+	gpio_set_af(GPIOA, GPIO_AF1, GPIO2);
+	gpio_set_af(GPIOA, GPIO_AF1, GPIO3);
+
+	/* Setup USART parameters. */
+    rcc_periph_clock_enable(RCC_USART2);
+	usart_set_baudrate(USART2, 9600);
+	usart_set_databits(USART2, 8);
+	usart_set_stopbits(USART2, USART_CR2_STOP_1_0BIT);
+	usart_set_mode(USART2, USART_MODE_TX_RX);
+	usart_set_parity(USART2, USART_PARITY_NONE);
+	usart_set_flow_control(USART2, USART_FLOWCONTROL_NONE);
+
+	/* Finally enable the USART. */
+	usart_enable(USART2);
+    
+    /* setup GPS_nEN, GPS_PPS pins */
+    rcc_periph_clock_enable(RCC_GPIOB);
+    gpio_mode_setup(GPIOB, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO7);
+    gpio_set(GPIOB, GPIO7);
+
+    rcc_periph_clock_enable(RCC_GPIOC);
+    gpio_mode_setup(GPIOC, GPIO_MODE_INPUT, GPIO_PUPD_PULLDOWN, GPIO13);
+}
+
+void gps_enable()
+{
+    gpio_clear(GPIOB, GPIO7);
+}
+
+void gps_disable()
+{
+    gpio_set(GPIOB, GPIO7);
+}
+
+void gpsTest()
+{
+    LED_ON; delay(200); LED_OFF; delay(200);
+    
+    gps_setup();
+    
+    LED_ON; delay(200); LED_OFF;
+    
+    gps_enable();
+    
+    while (1) {
+        usart_send_blocking(USART2, 'X');
+    }
 }
 
 void partNumberTest()
@@ -116,7 +194,8 @@ int main()
     rc = si446x_boot(TCXO_FREQ_HZ);
     if (rc) testFail(2);
     
+    gpsTest();
     //partNumberTest();
     //prnTest();
-    afskTest();
+    //afskTest();
 }

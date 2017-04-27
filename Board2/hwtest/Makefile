@@ -38,7 +38,7 @@ clean:
 	$(Q)$(RM) -rf $(TARGET).elf $(TARGET).bin $(OBJS)
 
 flash:
-	st-flash --reset write binary.bin 0x8000000
+	st-flash --reset write $(TARGET).bin 0x8000000
 
 #include $(OPENCM3_DIR)/mk/genlink-rules.mk
 include $(OPENCM3_DIR)/mk/gcc-rules.mk
