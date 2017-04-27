@@ -14,46 +14,35 @@
 #define TIM_PWM     TIM14
 #define IRQ_PWM     NVIC_TIM14_IRQ
 
-#define SYMBOL_RATE 1200
-#define FREQ_MARK   1200
-#define FREQ_SPACE  2200
+#define SYMBOL_RATE 1200ul
+#define FREQ_MARK   1200ul
+#define FREQ_SPACE  2200ul
 
 /* Defines oversampling - timer overflows (PWM cycles) per symbol */
-#define SAMPLES_PER_SYMBOL  16
+#define SAMPLES_PER_SYMBOL  32
 
 #define PWM_PRESCALER       5
-#define PWM_PERIOD          250
+#define PWM_PERIOD          125
 
-#define WAVETABLE_SIZE      192
-#define PHASE_MAX           (WAVETABLE_SIZE << 8)
+#define WAVETABLE_SIZE      256ul
+#define FRAC                6
+#define PHASE_MAX           (WAVETABLE_SIZE << FRAC)
 
-#define PHASE_DELTA_MARK    (PHASE_MAX * FREQ_MARK / SYMBOL_RATE / SAMPLES_PER_SYMBOL)
-#define PHASE_DELTA_SPACE   (PHASE_MAX * FREQ_SPACE / SYMBOL_RATE / SAMPLES_PER_SYMBOL) 
+#define PHASE_DELTA_MARK    ((uint32_t)PHASE_MAX * FREQ_MARK / SYMBOL_RATE / SAMPLES_PER_SYMBOL)
+#define PHASE_DELTA_SPACE   ((uint32_t)PHASE_MAX * FREQ_SPACE / SYMBOL_RATE / SAMPLES_PER_SYMBOL) 
 
 static const uint8_t waveTable[WAVETABLE_SIZE] = {
-    125, 129, 133, 137, 141, 145, 149, 153, 157, 161, 165, 169, 173, 177, 
-    180, 184, 188, 191, 194, 198, 201, 204, 207, 210, 213, 216, 219, 222, 
-    224, 227, 229, 231, 233, 235, 237, 239, 240, 242, 243, 245, 246, 247, 
-    248, 248, 249, 249, 250, 250, 250, 250, 250, 249, 249, 248, 248, 247, 
-    246, 245, 243, 242, 240, 239, 237, 235, 233, 231, 229, 227, 224, 222, 
-    219, 216, 213, 210, 207, 204, 201, 198, 194, 191, 188, 184, 180, 177, 
-    173, 169, 165, 161, 157, 153, 149, 145, 141, 137, 133, 129, 125, 121, 
-    117, 113, 109, 105, 101, 97, 93, 89, 85, 81, 77, 73, 70, 66, 63, 59, 
-    56, 52, 49, 46, 43, 40, 37, 34, 31, 28, 26, 23, 21, 19, 17, 15, 13, 
-    11, 10, 8, 7, 5, 4, 3, 2, 2, 1, 1, 0, 0, 0, 0, 0, 1, 1, 2, 2, 3, 4, 
-    5, 7, 8, 10, 11, 13, 15, 17, 19, 21, 23, 26, 28, 31, 34, 37, 40, 43, 
-    46, 49, 52, 56, 59, 62, 66, 70, 73, 77, 81, 85, 89, 93, 97, 101, 105, 
-    109, 113, 117, 121
+62, 64, 65, 67, 68, 70, 71, 73, 74, 76, 77, 79, 80, 81, 83, 84, 86, 87, 89, 90, 91, 93, 94, 95, 96, 98, 99, 100, 101, 102, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 114, 115, 116, 117, 117, 118, 119, 119, 120, 120, 121, 121, 122, 122, 122, 123, 123, 123, 124, 124, 124, 124, 124, 124, 124, 124, 124, 124, 124, 123, 123, 123, 122, 122, 122, 121, 121, 120, 120, 119, 119, 118, 117, 117, 116, 115, 114, 114, 113, 112, 111, 110, 109, 108, 107, 106, 105, 104, 102, 101, 100, 99, 98, 96, 95, 94, 93, 91, 90, 89, 87, 86, 84, 83, 81, 80, 79, 77, 76, 74, 73, 71, 70, 68, 67, 65, 64, 62, 60, 59, 57, 56, 54, 53, 51, 50, 48, 47, 45, 44, 43, 41, 40, 38, 37, 35, 34, 33, 31, 30, 29, 28, 26, 25, 24, 23, 22, 20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 10, 9, 8, 7, 7, 6, 5, 5, 4, 4, 3, 3, 2, 2, 2, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 7, 8, 9, 10, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26, 28, 29, 30, 31, 33, 34, 35, 37, 38, 40, 41, 43, 44, 45, 47, 48, 50, 51, 53, 54, 56, 57, 59, 60
 };
 
-static uint8_t *txBuffer;
-static uint8_t  txBitMask;
-static uint16_t txBitsToSend;
-static uint16_t txSampleInSymbol;
-static uint32_t txPhase;
-static uint32_t txPhaseDelta;
+static volatile uint8_t *txBuffer;
+static volatile uint8_t  txBitMask;
+static volatile uint16_t txBitsToSend;
+static volatile uint16_t txSampleInSymbol;
+static volatile uint32_t txPhase;
+static volatile uint32_t txPhaseDelta;
 
-void afsk_send(uint8_t *message, uint8_t lengthInBits)
+void afsk_send(uint8_t *message, uint16_t lengthInBits)
 {
     txBuffer = message;
     txBitsToSend = lengthInBits;
@@ -74,6 +63,11 @@ void afsk_stop()
     timer_disable_oc_output(TIM_PWM, TIM_OC1);
 }
 
+uint8_t afsk_busy()
+{
+    return (txBitsToSend > 0);
+}
+
 void afsk_setup()
 {
     txBitsToSend = 0;
@@ -89,30 +83,32 @@ void afsk_setup()
     // Reset and configure timer
     rcc_periph_clock_enable(RCC_PWM);
     timer_reset(TIM_PWM);
-    timer_set_mode(TIM_PWM, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_CENTER_1, TIM_CR1_DIR_UP);
-    //timer_set_mode(TIM_PWM, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
-    timer_set_prescaler(TIM_PWM, PWM_PRESCALER);
+    //timer_set_mode(TIM_PWM, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_CENTER_2, TIM_CR1_DIR_UP);
+    timer_set_mode(TIM_PWM, TIM_CR1_CKD_CK_INT, TIM_CR1_CMS_EDGE, TIM_CR1_DIR_UP);
+    timer_set_prescaler(TIM_PWM, PWM_PRESCALER - 1);
     timer_set_period(TIM_PWM, PWM_PERIOD - 1);
     timer_enable_break_main_output(TIM_PWM);
 
     timer_set_oc_mode(TIM_PWM, TIM_OC1, TIM_OCM_PWM1);
-    timer_set_oc_value(TIM_PWM, TIM_OC1, PWM_PERIOD);
+    timer_set_oc_value(TIM_PWM, TIM_OC1, PWM_PERIOD / 2);
 
-    timer_enable_irq(TIM_PWM, TIM_DIER_CC1IE);
+    //timer_enable_irq(TIM_PWM, TIM_DIER_CC1IE);
+    timer_enable_irq(TIM_PWM, TIM_DIER_UIE);
     nvic_enable_irq(IRQ_PWM);
 }
 
 void tim14_isr(void)
 {
-    if (timer_get_flag(TIM_PWM, TIM_SR_CC1IF)) {
-        timer_clear_flag(TIM_PWM, TIM_SR_CC1IF);
+    if (timer_get_flag(TIM_PWM, TIM_SR_UIF)) 
+    {
+        timer_clear_flag(TIM_PWM, TIM_SR_UIF);
 
+        // We get here 19200 times per second or 16 times per symbol
+        
         if (txBitsToSend == 0) {
             afsk_stop();
             return;
         }
-
-        timer_set_oc_value(TIM_PWM, TIM_OC1, waveTable[txPhase >> 8]);
 
         if (txSampleInSymbol == 0) {
             /* Load new symbol (bit) to transmit */
@@ -134,7 +130,8 @@ void tim14_isr(void)
                 txBitMask <<= 1;
             }
 
-            txBitsToSend--;
+            //timer_set_oc_value(TIM_PWM, TIM_OC1, (txBitsToSend & 1) ? PWM_PERIOD : 0);
+            if (txBitsToSend > 0) txBitsToSend--;
         }
         
         txSampleInSymbol++;
@@ -142,7 +139,10 @@ void tim14_isr(void)
             txSampleInSymbol = 0;
         }
         
+        timer_set_oc_value(TIM_PWM, TIM_OC1, waveTable[txPhase >> FRAC]);
         txPhase = (txPhase + txPhaseDelta) % PHASE_MAX;
+        
+
     }
 }
 

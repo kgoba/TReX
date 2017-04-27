@@ -16,8 +16,8 @@
 #include "afsk.h"
 
 #define TCXO_FREQ_HZ            26000000uL
-#define TRANSMIT_FREQUENCY_HZ  144250000uL
-#define AFSK_DEVIATION_HZ            500uL
+#define TRANSMIT_FREQUENCY_HZ  144850000uL
+#define AFSK_DEVIATION_HZ           1500uL
 
 /*  PIN MAP
     -----------------------------
@@ -145,18 +145,19 @@ void afskTest()
     uint8_t rc = 0;
     uint8_t modulation = EZR_MOD_TYPE_2FSK | EZR_MOD_SOURCE_DIRECT_MODE | 
                          EZR_MOD_TX_MODE_ASYNC | EZR_MOD_TX_MODE_GPIO1;
-    uint8_t message[32];
-    const uint8_t messageLength = 32;
 
-    for (uint8_t i = 0; i < messageLength; i++) {
-        message[i] = (' ' + i);
-    }
+    uint8_t message[128];
+    uint16_t messageLength = 128;
     
+    for (uint16_t i = 0; i < messageLength; i++) {
+        message[i] = ' ' + i;
+    }
+
     afsk_setup();    
     
     if (!rc) rc = si446x_setFrequency(TRANSMIT_FREQUENCY_HZ, AFSK_DEVIATION_HZ);
     if (!rc) rc = si446x_setModulation(modulation);
-    if (!rc) rc = si446x_setDataRate(1200);
+    if (!rc) rc = si446x_setDataRate(1200*64);
     if (!rc) rc = si446x_setPower(0x10);
     if (!rc) rc = si446x_setupGPIO1(EZR_GPIO_MODE_TX_DATA);
     if (rc) testFail(3);
@@ -169,14 +170,11 @@ void afskTest()
         si446x_txOn();
         delay(20);
 
-        /* Start data modulation */
         afsk_send(message, 8 * messageLength);
-        /* Wait for the message to be transmitted */
-        delay(8000 * messageLength / 1200);
-        
-        delay(20);
+        while (afsk_busy());
 
         LED_OFF;
+        delay(20);
         si446x_txOff();
         delay(2000);
     }
@@ -204,8 +202,8 @@ int main()
     rc = si446x_boot(TCXO_FREQ_HZ);
     if (rc) testFail(2);
     
-    gpsTest();
+    //gpsTest();
     //partNumberTest();
     //prnTest();
-    //afskTest();
+    afskTest();
 }
