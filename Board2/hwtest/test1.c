@@ -145,7 +145,13 @@ void afskTest()
     uint8_t rc = 0;
     uint8_t modulation = EZR_MOD_TYPE_2FSK | EZR_MOD_SOURCE_DIRECT_MODE | 
                          EZR_MOD_TX_MODE_ASYNC | EZR_MOD_TX_MODE_GPIO1;
+    uint8_t message[32];
+    const uint8_t messageLength = 32;
 
+    for (uint8_t i = 0; i < messageLength; i++) {
+        message[i] = (' ' + i);
+    }
+    
     afsk_setup();    
     
     if (!rc) rc = si446x_setFrequency(TRANSMIT_FREQUENCY_HZ, AFSK_DEVIATION_HZ);
@@ -164,7 +170,11 @@ void afskTest()
         delay(20);
 
         /* Start data modulation */
-        delay(200);
+        afsk_send(message, 8 * messageLength);
+        /* Wait for the message to be transmitted */
+        delay(8000 * messageLength / 1200);
+        
+        delay(20);
 
         LED_OFF;
         si446x_txOff();

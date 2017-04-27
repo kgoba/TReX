@@ -5,4 +5,7 @@
 
 void afsk_setup(void);
 
+void afsk_send(uint8_t *message, uint8_t lengthInBits);
+void afsk_stop(void);
+
 #endif
