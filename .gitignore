@@ -5,6 +5,7 @@
 *.elf
 *.out
 *.map
+*.lst
 *.list
 *.launch
 .project
