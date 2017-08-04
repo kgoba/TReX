@@ -8,57 +8,147 @@
 
 #include "rcc.h"
 
+
+class IODirection {
+public:
+    enum e { Input, InputPU, InputPD, InputAnalog, OutputPP, OutputOD, OutputODPU, OutputAnalog };
+};
+
 template<uint32_t port, uint32_t pin>
 class IOPin : public RCC<port> {
 protected:
     static void set() {
         gpio_set(port, pin);
     }
+    
     static void clear() {
         gpio_clear(port, pin);
     }
+    
     static uint16_t read() {
         return gpio_get(port, pin);
     }
+    
 #if defined (STM32F1) 
     enum Speed { 
         LowSpeed = GPIO_MODE_OUTPUT_2_MHZ, 
         MidSpeed = GPIO_MODE_OUTPUT_10_MHZ, 
         HighSpeed = GPIO_MODE_OUTPUT_50_MHZ 
     };
+    
     static void setupOutput(Speed speed = LowSpeed) {
         RCC<port>::enableClock();
         gpio_set_mode(port, (uint8_t)speed, GPIO_CNF_OUTPUT_PUSHPULL, pin);
     }
+    
     static void setupInput() {
         RCC<port>::enableClock();
         gpio_set_mode(port, GPIO_MODE_INPUT, GPIO_CNF_INPUT_FLOAT, pin);
     }
-    static void setupAlternate(uint8_t mode, uint8_t cnf) {
+    
+    static void setupAlternate(IODirection::e direction, uint8_t af) {
         RCC<port>::enableClock();
+        rcc_periph_clock_enable(RCC_AFIO);
+
+        uint8_t mode, cnf;
+        
+        switch (direction) {
+        case IODirection::OutputPP:
+        case IODirection::OutputOD:
+        case IODirection::OutputODPU:
+            mode = GPIO_MODE_OUTPUT_50_MHZ;
+            break;
+        case IODirection::Input:
+        case IODirection::InputPU:
+        case IODirection::InputPD:
+            mode = GPIO_MODE_INPUT;
+            break;
+        }
+
+        switch (direction) {
+        case IODirection::OutputPP:
+            cnf = GPIO_CNF_OUTPUT_ALTFN_PUSHPULL;
+            break;
+        case IODirection::OutputOD:
+        case IODirection::OutputODPU:
+            cnf = GPIO_CNF_OUTPUT_ALTFN_OPENDRAIN;
+            break;
+        case IODirection::Input:
+            cnf = GPIO_CNF_INPUT_FLOAT;
+            break;
+        case IODirection::InputPU:
+        case IODirection::InputPD:
+            cnf = GPIO_CNF_INPUT_PULL_UPDOWN;
+            break;
+        }
+        
         gpio_set_mode(port, mode, cnf, pin);
+        
+        switch (direction) {
+        case IODirection::InputPU:
+            gpio_set(port, pin);
+            break;
+        case IODirection::InputPD:
+            gpio_clear(port, pin);
+            break;
+        default:
+            break;
+        }        
     }
+
 #else
     enum Speed { 
         LowSpeed = GPIO_OSPEED_2MHZ, 
         MidSpeed = GPIO_OSPEED_25MHZ, 
         HighSpeed = GPIO_OSPEED_100MHZ 
     };
+    
     static void setupOutput(Speed speed = LowSpeed) {
         RCC<port>::enableClock();
         gpio_mode_setup(port, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, pin);
         gpio_set_output_options(port, GPIO_OTYPE_PP, (uint8_t)speed, pin);
     }
+    
     static void setupInput() {
         RCC<port>::enableClock();
         gpio_mode_setup(port, GPIO_MODE_INPUT, GPIO_PUPD_NONE, pin);
     }
-    static void setupAlternate(uint8_t af) {
+    
+    static void setupAlternate(IODirection::e direction, uint8_t af) {
         RCC<port>::enableClock();
-        gpio_mode_setup(port, GPIO_MODE_AF, GPIO_PUPD_NONE, pin);
-        gpio_set_output_options(port, GPIO_OTYPE_PP, (uint8_t)HighSpeed, pin);
+        uint8_t pull_up_down;
+        
+        switch (direction) {
+        case IODirection::OutputPP:
+        case IODirection::OutputOD:
+        case IODirection::Input:
+            pull_up_down = GPIO_PUPD_NONE;
+            break;
+        case IODirection::InputPU:
+        case IODirection::OutputODPU:
+            pull_up_down = GPIO_PUPD_PULLUP;
+            break;
+        case IODirection::InputPD:
+            pull_up_down = GPIO_PUPD_PULLDOWN;
+            break;
+        }
+        gpio_mode_setup(port, GPIO_MODE_AF, pull_up_down, pin);
+
+        switch (direction) {
+        case IODirection::OutputPP:
+            gpio_set_output_options(port, GPIO_OTYPE_PP, (uint8_t)HighSpeed, pin);
+            break;
+        case IODirection::OutputOD:
+        case IODirection::OutputODPU:
+            gpio_set_output_options(port, GPIO_OTYPE_OD, (uint8_t)HighSpeed, pin);
+            break;
+        default:
+            break;
+        }
+
         gpio_set_af(port, af, pin);
     }
+    
 #endif
 };
 
@@ -178,19 +268,66 @@ public:
 template<typename Pin, uint32_t periph>
 class DigitalAF : public Pin {
 public:
-    static void begin() {
-        Pin::setupAlternate(af);
+    static void begin(IODirection::e direction) {
+        Pin::setupAlternate(direction, af);
     }
     
 protected:
-    const static uint8_t af;
+    const static uint8_t af; // Remap information
 };
 
-template<> const uint8_t DigitalAF<PA_0, USART2>::af = GPIO_AF1;
-template<> const uint8_t DigitalAF<PA_1, USART2>::af = GPIO_AF1;
-template<> const uint8_t DigitalAF<PA_2, USART2>::af = GPIO_AF1;
-template<> const uint8_t DigitalAF<PA_3, USART2>::af = GPIO_AF1;
-template<> const uint8_t DigitalAF<PA_4, USART2>::af = GPIO_AF1;
+#if defined(STM32F1)
+template<> const uint8_t DigitalAF<PA_0,  USART2>::af = 0;  // CTS
+template<> const uint8_t DigitalAF<PA_1,  USART2>::af = 0;  // RTS
+template<> const uint8_t DigitalAF<PA_2,  USART2>::af = 0;  // TX
+template<> const uint8_t DigitalAF<PA_3,  USART2>::af = 0;  // RX
+template<> const uint8_t DigitalAF<PA_4,  USART2>::af = 0;  // CK
+
+template<> const uint8_t DigitalAF<PA_4,  SPI1>::af   = 0;  // NSS
+template<> const uint8_t DigitalAF<PA_5,  SPI1>::af   = 0;  // SCLK
+template<> const uint8_t DigitalAF<PA_6,  SPI1>::af   = 0;  // MISO
+template<> const uint8_t DigitalAF<PA_7,  SPI1>::af   = 0;  // MOSI
+
+template<> const uint8_t DigitalAF<PA_8,  USART1>::af = 0;  // CTS
+template<> const uint8_t DigitalAF<PA_9,  USART1>::af = 0;  // RTS
+template<> const uint8_t DigitalAF<PA_10, USART1>::af = 0;  // TX
+template<> const uint8_t DigitalAF<PA_11, USART1>::af = 0;  // RX
+template<> const uint8_t DigitalAF<PA_12, USART1>::af = 0;  // CK
+
+template<> const uint8_t DigitalAF<PA_15, SPI1>::af   = AFIO_MAPR_SPI1_REMAP;  // NSS
+template<> const uint8_t DigitalAF<PB_3,  SPI1>::af   = AFIO_MAPR_SPI1_REMAP;  // SCLK
+template<> const uint8_t DigitalAF<PB_4,  SPI1>::af   = AFIO_MAPR_SPI1_REMAP;  // MISO
+template<> const uint8_t DigitalAF<PB_5,  SPI1>::af   = AFIO_MAPR_SPI1_REMAP;  // MOSI
+
+template<> const uint8_t DigitalAF<PB_6,  I2C1>::af   = 0;  // SCL
+template<> const uint8_t DigitalAF<PB_7,  I2C1>::af   = 0;  // SDA
+
+template<> const uint8_t DigitalAF<PB_6,  USART1>::af = AFIO_MAPR_USART1_REMAP;// TX
+template<> const uint8_t DigitalAF<PB_7,  USART1>::af = AFIO_MAPR_USART1_REMAP;// RX
+
+template<> const uint8_t DigitalAF<PB_8,  I2C1>::af   = AFIO_MAPR_I2C1_REMAP;  // SCL
+template<> const uint8_t DigitalAF<PB_9,  I2C1>::af   = AFIO_MAPR_I2C1_REMAP;  // SDA
+
+template<> const uint8_t DigitalAF<PB_10, I2C2>::af   = 0;  // SCL
+template<> const uint8_t DigitalAF<PB_11, I2C2>::af   = 0;  // SDA
+
+template<> const uint8_t DigitalAF<PB_10, USART3>::af = 0;  // TX
+template<> const uint8_t DigitalAF<PB_11, USART3>::af = 0;  // RX
+template<> const uint8_t DigitalAF<PB_12, USART3>::af = 0;  // CK
+template<> const uint8_t DigitalAF<PB_13, USART3>::af = 0;  // CTS
+template<> const uint8_t DigitalAF<PB_14, USART3>::af = 0;  // RTS
+
+template<> const uint8_t DigitalAF<PB_12, SPI2>::af   = 0;  // NSS
+template<> const uint8_t DigitalAF<PB_13, SPI2>::af   = 0;  // SCLK
+template<> const uint8_t DigitalAF<PB_14, SPI2>::af   = 0;  // MISO
+template<> const uint8_t DigitalAF<PB_15, SPI2>::af   = 0;  // MOSI
+
+#else
+template<> const uint8_t DigitalAF<PA_0,  USART2>::af = GPIO_AF1;
+template<> const uint8_t DigitalAF<PA_1,  USART2>::af = GPIO_AF1;
+template<> const uint8_t DigitalAF<PA_2,  USART2>::af = GPIO_AF1;
+template<> const uint8_t DigitalAF<PA_3,  USART2>::af = GPIO_AF1;
+template<> const uint8_t DigitalAF<PA_4,  USART2>::af = GPIO_AF1;
 
 template<> const uint8_t DigitalAF<PA_8,  USART1>::af = GPIO_AF1;
 template<> const uint8_t DigitalAF<PA_9,  USART1>::af = GPIO_AF1;
@@ -198,22 +335,23 @@ template<> const uint8_t DigitalAF<PA_10, USART1>::af = GPIO_AF1;
 template<> const uint8_t DigitalAF<PA_11, USART1>::af = GPIO_AF1;
 template<> const uint8_t DigitalAF<PA_12, USART1>::af = GPIO_AF1;
 
-template<> const uint8_t DigitalAF<PA_4, SPI1>::af   = GPIO_AF0;
-template<> const uint8_t DigitalAF<PA_5, SPI1>::af   = GPIO_AF0;
-template<> const uint8_t DigitalAF<PA_6, SPI1>::af   = GPIO_AF0;
-template<> const uint8_t DigitalAF<PA_7, SPI1>::af   = GPIO_AF0;
+template<> const uint8_t DigitalAF<PA_4,  SPI1>::af   = GPIO_AF0;
+template<> const uint8_t DigitalAF<PA_5,  SPI1>::af   = GPIO_AF0;
+template<> const uint8_t DigitalAF<PA_6,  SPI1>::af   = GPIO_AF0;
+template<> const uint8_t DigitalAF<PA_7,  SPI1>::af   = GPIO_AF0;
+
 template<> const uint8_t DigitalAF<PA_15, SPI1>::af   = GPIO_AF0;
+template<> const uint8_t DigitalAF<PB_3,  SPI1>::af   = GPIO_AF0;
+template<> const uint8_t DigitalAF<PB_4,  SPI1>::af   = GPIO_AF0;
+template<> const uint8_t DigitalAF<PB_5,  SPI1>::af   = GPIO_AF0;
 
-template<> const uint8_t DigitalAF<PB_3, SPI1>::af   = GPIO_AF0;
-template<> const uint8_t DigitalAF<PB_4, SPI1>::af   = GPIO_AF0;
-template<> const uint8_t DigitalAF<PB_5, SPI1>::af   = GPIO_AF0;
-
-template<> const uint8_t DigitalAF<PB_6, I2C1>::af   = GPIO_AF1;
-template<> const uint8_t DigitalAF<PB_7, I2C1>::af   = GPIO_AF1;
+template<> const uint8_t DigitalAF<PB_6,  I2C1>::af   = GPIO_AF1;
+template<> const uint8_t DigitalAF<PB_7,  I2C1>::af   = GPIO_AF1;
+#endif
 
 // Specialization for unconnected (NC) pin
 template<uint32_t periph> 
 class DigitalAF<NC, periph> {
 public:
-    static void begin() {}
+    static void begin(IODirection::e direction) {}
 };

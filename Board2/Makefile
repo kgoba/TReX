@@ -8,5 +8,6 @@ OBJS            = src/ptest.o
 
 INCLUDE         += -I.
 
-include platform/stm32f030x8.mk
+include platform/stm32f103x8.mk
+#include platform/stm32f030x8.mk
 include platform/libopencm3.mk
