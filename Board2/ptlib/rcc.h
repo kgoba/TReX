@@ -25,7 +25,11 @@ template<> const rcc_periph_clken RCC<GPIOC>::clock = RCC_GPIOC;
 template<> const rcc_periph_clken RCC<GPIOD>::clock = RCC_GPIOD;
 template<> const rcc_periph_clken RCC<GPIOF>::clock = RCC_GPIOF;
 
+template<> const rcc_periph_clken RCC<USART1>::clock = RCC_USART1;
+template<> const rcc_periph_clken RCC<USART2>::clock = RCC_USART2;
+
 template<> const rcc_periph_clken RCC<SPI1>::clock = RCC_SPI1;
 template<> const rcc_periph_clken RCC<SPI2>::clock = RCC_SPI2;
+
 template<> const rcc_periph_clken RCC<I2C1>::clock = RCC_I2C1;
 template<> const rcc_periph_clken RCC<I2C2>::clock = RCC_I2C2;

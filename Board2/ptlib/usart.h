@@ -11,13 +11,13 @@
 template<uint32_t usart, typename Pin_tx, typename Pin_rx>
 class USART : public RCC<usart> {
 public:
-    static void begin() {
-        DigitalAF<Pin_tx, usart>::begin();
-        DigitalAF<Pin_rx, usart>::begin();
+    static void begin(int baudrate = 9600) {
+        DigitalAF<Pin_tx, usart>::begin(IODirection::OutputPP);
+        DigitalAF<Pin_rx, usart>::begin(IODirection::Input);
 
         RCC<usart>::enableClock();
 
-        usart_set_baudrate(usart, 4800);
+        usart_set_baudrate(usart, baudrate);
         usart_set_databits(usart, 8);
         usart_set_parity(usart, USART_PARITY_NONE);
         usart_set_stopbits(usart, USART_CR2_STOP_1_0BIT);
@@ -38,7 +38,7 @@ public:
     }
 
     static int getc() {
-        if (usart_get_flag(usart, USART_ISR_RXNE) return -1;    // or USART_SR_RXNE
+        if (!usart_get_flag(usart, USART_ISR_RXNE)) return -1;    // or USART_SR_RXNE
         return usart_recv(usart);
     }
     
