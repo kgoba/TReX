@@ -9,24 +9,29 @@ LDLIBS          += -L$(OPENCM3_DIR)/lib
 LDLIBS          += -l$(OPENCM3_LIB)
 
 TARGET ?= firmware
+OBJDIR ?= .build
+
+OBJS2 = $(addprefix $(OBJDIR)/, $(OBJS))
 
 #include $(OPENCM3_DIR)/mk/genlink-config.mk
-include $(OPENCM3_DIR)/mk/gcc-config.mk
+include platform/gcc-config.mk
 
-.PHONY: clean all
+.PHONY: mkobj clean all
+.PRECIOUS: $(OBJS2)
 
-all: $(TARGET).elf $(TARGET).bin $(TARGET).lst
-	$(SIZE) $(TARGET).elf 
+all: mkobj $(OBJDIR)/$(TARGET).elf $(OBJDIR)/$(TARGET).bin $(OBJDIR)/$(TARGET).list
+	@printf "  SIZE     $(TARGET).elf\n"
+	$(Q)$(SIZE) $(OBJDIR)/$(TARGET).elf 
 
-$(TARGET).lst: $(TARGET).elf
-	$(OBJDUMP) -S $(TARGET).elf >$(TARGET).lst
+mkobj:
+	$(Q)mkdir -p $(OBJDIR)
 
 clean:
-	$(Q)$(RM) -rf $(TARGET).* *.o
+	$(Q)$(RM) -rf $(OBJDIR)
 
-flash:
-	st-flash --reset write $(TARGET).bin 0x8000000
+flash: $(OBJDIR)/$(TARGET).bin
+	st-flash --reset write $< 0x8000000
 
 #include $(OPENCM3_DIR)/mk/genlink-rules.mk
-include $(OPENCM3_DIR)/mk/gcc-rules.mk
+include platform/gcc-rules.mk
 
